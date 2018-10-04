@@ -1,0 +1,298 @@
+<!doctype html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<link href="css/mui.min.css" rel="stylesheet" />
+		<link rel="stylesheet" href="css/common.css" />
+		<script type="text/javascript" src="js/vue.js"></script>
+		<script type="text/javascript" src="js/axios.js"></script>
+		<script type="text/javascript" src="js/vars.js"></script>
+		<script src="js/mui.min.js"></script>
+		<style>
+			html{
+				height: 100%;
+			}
+			body{
+				height: calc(100% - 50px);
+				background: #fff;
+			}
+			#hw {
+				height: 50px;
+				font-size: 30px;
+			}
+			
+			#hw .mui-icon-closeempty {
+				padding-top: 4px;
+				font-size: 40px;
+			}
+			
+			#hw h1 {
+				padding-top: 4px;
+				font-size: 24px;
+			}
+			
+			#main {
+				margin-top: 50px;
+				position: relative;
+				width: 100%;
+				padding: 10px 20px 0;
+				font-size: 16px;
+				margin-bottom: 10px;
+				background: #fff;
+			}
+			#main .data {
+				height: 24px;
+				line-height: 24px;
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+			}
+			
+			#main.edit .data,
+			#main .showex .data {
+				border: 1px solid #aaa;
+			}
+			
+			#main .edit {
+				text-align: center;
+				padding: 5px 16px;
+				box-shadow: 1px 1px 1px #aaa;
+				width: 50%;
+				margin: 0 auto;
+			}
+			
+			#main .edit:hover {
+				background: #dfd;
+			}
+			
+			#main .edit:active {
+				background: #bfb;
+			}
+			
+			#main .showex {
+				overflow: hidden;
+				height: 0;
+				margin: 20px auto 0;
+				transition: height .5s;
+				-webkit-transition: height .5s;
+			}
+			
+			#main .showex.show {
+				height: 60px;
+			}
+			
+			#main .showex .data {
+				display: block;
+				margin: 4px auto 0;
+				padding: 0 10px;
+			}
+		</style>
+		<script type="text/javascript">
+			var usrv, userid, userdata, cfg, mw, self;
+			mui.init({
+				beforeback: function() {
+					if(usrv.edited)
+						mui.fire(mw, "setcfg");
+					self.close();
+				}
+			});
+			mui.plusReady(function() {
+				self = plus.webview.currentWebview();
+				mw = plus.webview.currentWebview().opener();
+				cfg = self.cfg;
+				userid = self.userid;
+				document.querySelector("body").addEventListener("swipeleft", function(){
+					self.close();
+				});
+				axios.get(cfg.serverurl+"/user/"+userid+"/json")
+					.then(function(res){
+						userdata = res.data;
+						vueload();
+						updateuserdata();
+					});
+			});
+			function updateuserdata(){
+				//usrv.icon = "/img/icon/" + usrv.user.id + ".png";
+				usrv.loaded = true;
+				authkey = getCookie('authkey');
+				if(authkey != null) {
+					usrv.me.id = getCookie('id');
+					if(usrv.me.id == null) {
+						plus.storage.removeItem('authkey');
+					} else {
+						axios.get(cfg.serverurl+"/user/" + usrv.me.id+"/json")
+							.then(function(res) {
+								usrv.logged = true;
+								usrv.me.permission = parseInt(res.data.permission);
+								usrv.me.usrgroup = parseInt(res.data.usrgroup);
+								usrv.isme = usrv.me.id == usrv.user.id;
+								usrv.canedit = (usrv.me.permission & vars.Permission.admin || usrv.me.usrgroup == vars.UserGroup.admin || usrv.isme);
+							})
+							.catch(function(res) {
+								plus.storage.removeItem('authkey');
+								plus.storage.removeItem('id');
+							});
+					}
+				}
+			}
+			function vueload(){
+				usrv = new Vue({
+					el: '#main',
+					data: {
+						user: userdata,
+						icon: "",
+						view: true,
+						viewex: true,
+						showex: false,
+						logged: false,
+						isme: false,
+						canedit: false,
+						proc: false,
+						me: {
+							id: 0,
+							permission: vars.Permission.read,
+							usrgroup: vars.UserGroup.guest,
+							pw: "",
+							email: ""
+						}
+					},
+					computed: {
+						permissionstr: function() {
+							p = [];
+							if(this.user.permission & vars.Permission.read)
+								p.push[vars.Permission.readstr];
+							if(this.user.permission & vars.Permission.rep)
+								p.push[vars.Permission.repstr];
+							if(this.user.permission & vars.Permission.newpost)
+								p.push[vars.Permission.newpoststr];
+							if(this.user.permission & vars.Permission.admin)
+								return vars.Permission.adminstr;
+							return p.join(',');
+						},
+						groupstr: function() {
+							g = "用户";
+							this.user.usrgroup = parseInt(this.user.usrgroup);
+							switch(this.user.usrgroup) {
+								case vars.UserGroup.normal:
+									return vars.UserGroup.normalstr + g;
+								case vars.UserGroup.banned:
+									return vars.UserGroup.bannedstr + g;
+								case vars.UserGroup.admin:
+									return vars.UserGroup.adminstr + g;
+								default:
+									return vars.UserGroup.gueststr + g;
+							}
+						}
+					},
+					methods: {
+						edit: function() {
+							if(this.proc)
+								return;
+							let v = this;
+							if(v.view)
+								return v.view = false;
+							v.user.usrgroup = parseInt(v.user.usrgroup);
+							v.proc = true;
+							const params = new URLSearchParams();
+							params.append('id', v.user.id);
+							params.append('usrid', v.user.usrid);
+							params.append('name', v.user.name);
+							params.append('permission', v.user.permission);
+							params.append('usrgroup', v.user.usrgroup);
+							params.append('hp', v.user.homepage);
+							params.append('github', v.user.github);
+							params.append('steam', v.user.steam);
+							axios.post(cfg.serverurl+"/user/edit", params)
+								.then(function(res) {
+									if(res.data <= vars.UserStatus.success)
+										location.reload(false);
+									else mui.toast("修改失败");
+									v.proc = false;
+								})
+								.catch(function(res) {
+									mui.toast("修改失败");
+									v.proc = false;
+								});
+						},
+						editex: function() {
+							if(this.proc)
+								return;
+							let v = this;
+							if(v.viewex) {
+								v.viewex = false;
+								v.showex = true;
+								return;
+							}
+							if(v.me.pw == "" && v.me.email == "")
+								return;
+							v.proc = true;
+							const params = new URLSearchParams();
+							params.append('id', v.user.id);
+							if(v.me.pw != "")
+								params.append('pw', md5(v.me.pw));
+							params.append('email', v.me.email);
+							axios.post(cfg.serverurl+"/user/edit", params)
+								.then(function(res) {
+									if(res.data <= vars.UserStatus.success)
+										location.reload(false);
+									else mui.toast("修改失败");
+									v.proc = false;
+								})
+								.catch(function(res) {
+									mui.toast("修改失败");
+									v.proc = false;
+								});
+						}
+					}
+				});
+			}
+		</script>
+	</head>
+
+	<body>
+		<header id="hw" class="mui-bar mui-bar-nav">
+			<div class="mui-action-back mui-icon mui-icon-closeempty"></div>
+			<h1 class="mui-title ellipsis">用户详细</h1>
+		</header>
+		<div id="main" :class="view?'view':'edit'" v-cloak>
+			<span>显示名称:</span>
+			<a v-if="view" class="data name">{{user.name}}</a>
+			<input v-else class="data name" type="text" maxlength="200" v-model="user.name" />
+			<br/>
+			<span>id:</span>
+			<a v-if="view" class="data usrid">{{user.usrid}}</a>
+			<input v-else class="data usrid" type="text" maxlength="200" v-model="user.usrid" />
+			<a class="uid">, uid:{{user.id}}</a>
+			<br/>
+			<span>权限:</span>
+			<a v-if="view||!(user.permission&vars.Permission.admin)" class="data permission">{{permissionstr}}</a>
+			<input v-else class="data permission" type="text" maxlength="200" v-model="user.permission" />
+			<br/>
+			<span>用户组:</span>
+			<a v-if="view||!user.usrgroup==3" class="data group">{{groupstr}}</a>
+			<input v-else class="data group" type="text" maxlength="200" v-model="user.usrgroup" />
+			<br/>
+			<span>主页:</span>
+			<a v-if="view" class="data hp" :href="user.homepage">{{user.homepage}}</a>
+			<input v-else class="data hp" type="text" maxlength="200" v-model="user.homepage" />
+			<br/>
+			<span>GitHub:</span>
+			<a v-if="view" class="data github" :href="'https://github.com/'+user.github">{{user.github}}</a>
+			<input v-else class="data github" type="text" maxlength="200" v-model="user.github" />
+			<br/>
+			<span>Steam:</span>
+			<a v-if="view" class="data steam" :href="'https://steamcommunity.com/id/'+user.steam">{{user.steam}}</a>
+			<input v-else class="data steam" type="text" maxlength="200" v-model="user.steam" />
+			<div v-if="logged&&canedit" class="edit beforestr" :str="view?'编辑':'完成'" @click="edit"></div>
+			<div class="showex" :class="showex?'show':'hidden'">
+				<input class="data pw" type="password" maxlength="=200" placeholder="新密码" v-model="me.pw" />
+				<input class="data email" type="text" maxlength="=200" placeholder="新邮箱" v-model="me.email" />
+			</div>
+			<div v-if="isme" class="edit beforestr" :str="viewex?'修改邮箱/密码':'完成'" @click="editex"></div>
+		</div>
+	</body>
+
+</html>

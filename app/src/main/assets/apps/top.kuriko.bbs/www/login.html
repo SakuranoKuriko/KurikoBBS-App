@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<link href="css/mui.min.css" rel="stylesheet" />
+		<script type="text/javascript" src="js/vue.js"></script>
+		<script type="text/javascript" src="js/axios.js"></script>
+		<script type="text/javascript" src="js/vars.js"></script>
+		<script type="text/javascript" src="js/md5.js"></script>
+		<script type="text/javascript" src="js/mui.min.js"></script>
+		<style>
+			#hw {
+				height: 50px;
+				font-size: 30px;
+			}
+			
+			#hw .mui-icon-closeempty {
+				padding-top: 4px;
+				font-size: 40px;
+			}
+			
+			#hw h1 {
+				padding-top: 4px;
+				font-size: 24px;
+			}
+			
+			#mw.mui-content {
+				margin-top: 60px;
+				padding-top: 0;
+				background: #fff;
+			}
+			
+			#mw .mui-input-row {
+				padding: 10px 20px;
+				border-top: 1px solid #ddd;
+			}
+			
+			#mw .mui-input-row:first-child {
+				border-top: none;
+			}
+			
+			#mw .mui-btn-block {
+				width: 48%;
+				float: left;
+				margin-left: 1.5%;
+				margin-top: 2%;
+				border: none;
+				border-radius: 5px;
+			}
+			
+			#mw .reg {
+				background-color: #0a0;
+			}
+			
+			#mw .reg:active {
+				background-color: #080;
+			}
+		</style>
+		<script type="text/javascript">
+			var mv, hv, self, mw, login = true,
+				cfg;
+			mui.init();
+			mui.plusReady(function() {
+				self = plus.webview.currentWebview();
+				mw = plus.webview.currentWebview().opener();
+				cfg = self.cfg;
+				if(typeof self.login != "undefined" && (self.login == "false" || self.login == false))
+					login = false;
+				vueload();
+			});
+
+			function vueload() {
+				mv = new Vue({
+					el: "#mw",
+					data: {
+						id: "",
+						pw: "",
+						cpw: "",
+						name: "",
+						email: "",
+						login: login
+					},
+					methods: {
+						tglogin: function(st) {
+							this.login = st;
+							if(st) {
+								document.querySelector('#mw .reg-form .mui-input-row input.cpw').disabled = true;
+								hv.ti = "登录";
+							} else {
+								hv.ti = "注册";
+								setTimeout(function() {
+									document.querySelector('#mw .reg-form .mui-input-row input.cpw').disabled = false;
+								}, 100);
+							}
+						},
+						ilogin: function() {
+							let v = this;
+							if(v.proc) return;
+							if(v.id == "") return mui.toast("请输入账号");
+							if(v.pw == "") return mui.toast("请输入密码");
+							v.proc = true;
+							const params = new URLSearchParams();
+							params.append('id', v.id);
+							params.append('pw', md5(v.pw));
+							axios.post(cfg.serverurl + '/user/login', params)
+								.then(function(res) {
+									if(res.data <= vars.UserStatus.success) {
+										plus.storage.setItem("authkey", getCookie('authkey'));
+										plus.storage.setItem("id", getCookie('id'));
+										mui.fire(mw, "setcfg");
+										mui.toast('登录成功');
+										self.close();
+									} else mui.toast('登录失败');
+									v.proc = false;
+								})
+								.catch(function(res) {
+									mui.toast('登录失败');
+									v.proc = false;
+								});
+						},
+						ireg: function() {
+							let v = this;
+							if(v.proc) return;
+							if(v.id == "") return mui.toast("请输入账号");
+							if(v.pw == "") return mui.toast("请输入密码");
+							if(v.cpw == "") return mui.toast("请再次输入密码");
+							if(!vars.Regexp.email.test(v.email)) return mui.toast("邮箱格式错误");
+							if(v.name == "") v.name = v.id;
+							v.proc = true;
+							const params = new URLSearchParams();
+							params.append('id', v.id);
+							params.append('pw', md5(v.cpw));
+							params.append('name', v.name);
+							params.append('email', v.email);
+							axios.post(cfg.serverurl + '/user/reg', params)
+								.then(function(res) {
+									if(res.data <= vars.UserStatus.success){
+										plus.storage.setItem("authkey", getCookie('authkey'));
+										plus.storage.setItem("id", getCookie('id'));
+										mui.fire(mw, "setcfg");
+										mui.toast('注册成功');
+										self.close();
+									}
+									else mui.toast('注册失败');
+									v.proc = false;
+								})
+								.catch(function(res) {
+									mui.toast('注册失败');
+									v.proc = false;
+								});
+						}
+					}
+				});
+				hv = new Vue({
+					el: "#hw"
+				});
+			}
+		</script>
+	</head>
+
+	<body>
+		<header id="hw" class="mui-bar mui-bar-nav">
+			<div class="mui-action-back mui-icon mui-icon-closeempty"></div>
+			<h1 class="mui-title ellipsis" v-text="mv.login?'登录':'注册'"></h1>
+		</header>
+		<div id="mw" class="mui-content" v-cloak>
+			<div v-show="login" class="login-form">
+				<div class="mui-input-row">
+					<label>账号</label>
+					<input type="text" class="id mui-input-clear mui-input" placeholder="请输入账号" v-model="id">
+				</div>
+				<div class="mui-input-row">
+					<label>密码</label>
+					<input type="password" class="pw mui-input-clear mui-input" placeholder="请输入密码" v-model="pw">
+				</div>
+				<button class="login mui-btn mui-btn-block mui-btn-primary" @tap="ilogin">登录</button>
+				<button class="reg mui-btn mui-btn-block mui-btn-primary" @tap="tglogin(false)">注册</button>
+			</div>
+			<div v-show="!login" class="reg-form">
+				<div class="mui-input-row">
+					<label>账号</label>
+					<input type="text" class="id mui-input-clear mui-input" placeholder="请输入账号" v-model="id">
+				</div>
+				<div class="mui-input-row">
+					<label>密码</label>
+					<input type="password" class="pw mui-input-clear mui-input" placeholder="请输入密码" v-model="pw">
+				</div>
+				<div class="mui-input-row">
+					<label>确认密码</label>
+					<input type="password" class="cpw mui-input-clear mui-input" disabled="disabled" placeholder="再次输入密码" v-model="pw">
+				</div>
+				<div class="mui-input-row">
+					<label>昵称</label>
+					<input type="text" class="name mui-input-clear mui-input" :placeholder="id==''?'显示名称':id" v-model="pw">
+				</div>
+				<div class="mui-input-row">
+					<label>邮箱</label>
+					<input type="text" class="email mui-input-clear mui-input" placeholder="邮箱(可选)" v-model="pw">
+				</div>
+				<button class="login mui-btn mui-btn-block mui-btn-primary" @tap="tglogin(true);">登录</button>
+				<button class="reg mui-btn mui-btn-block mui-btn-primary" @tap="ireg">注册</button>
+			</div>
+		</div>
+	</body>
+
+</html>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<title></title>
+		<link rel="stylesheet" href="css/mui.min.css" />
+		<link rel="stylesheet" href="css/common.css" />
+		<link rel="stylesheet" href="css/index.css" />
+		<script type="text/javascript" src="js/vue.js"></script>
+		<script type="text/javascript" src="js/axios.js"></script>
+		<script type="text/javascript" src="js/vars.js"></script>
+		<script type="text/javascript" src="js/md5.js"></script>
+		<script type="text/javascript" src="js/pulltorefresh.min.js"></script>
+		<script type="text/javascript" src="js/mui.min.js"></script>
+		<script type="text/javascript" charset="utf-8">
+			var mv, hv, menuv;
+			var mscroll;
+			var cfgpage = null,
+				addpage = null,
+				postpage = null;
+			var pullref;
+			var cfg = {
+				serverurl: "https://bbs.kuriko.top",
+				autorefresh: false,
+				autorefdelay: 30000
+			};
+			mui.init();
+			mui.plusReady(function() {
+				cfgpage = mui.preload({
+					id: "config.html",
+					url: "config.html",
+					extras: {
+						cfg: cfg
+					}
+				});
+				mscroll = mui("#contentScrollWrap").scroll(); //主页滚动条
+				window.addEventListener("setcfg", updatecfg);
+				//plus.storage.removeItem("cfg");
+				//var cfgsave = plus.storage.getItem("cfg");
+				//if(cfgsave)
+				//	cfg = JSON.parse(cfgsave);
+				vueload();
+				pullref = PullToRefresh.init({
+					mainElement: '#mainlist',
+					onRefresh: function() {
+						return new Promise(updatelist);
+					}
+				});
+				postpage = mui.preload({
+					id: "post.html",
+					url: "post.html",
+					extras: {
+						cfg: cfg
+					}
+				});
+				addpage = mui.preload({
+					id: "newpost.html",
+					url: "newpost.html",
+					extras: {
+						cfg: cfg
+					}
+				})
+			});
+
+			function updateuser(usr) {
+				if(typeof usr != "object")
+					return;
+				const params = new URLSearchParams();
+				params.append('usrlst', JSON.stringify(usr));
+				axios.post(cfg.serverurl + '/user/users', params)
+					.then(function(res) {
+						users = res.data;
+						for(let i in users) {
+							users[i].uid = 'u' + users[i].id;
+							mv.users['u' + users[i].id] = Object.assign({}, users[i]);
+						}
+						if(mv.logged) {
+							menuv.myname = mv.users['u' + mv.user.id].name;
+							menuv.logout = "注销";
+						}
+						mv.userupdated = true;
+					});
+			}
+
+			function vueload() {
+				//接管标题栏
+				hv = new Vue({
+					el: "#hwrap",
+					methods: {
+						newpost: function() {
+							if (!mv.logged)
+								return menuv.loginme();
+							mui.openWindow({
+								id: 'newpost.html',
+								show: {
+									aniShow: "slide-in-bottom"
+								},
+								waiting: {
+									autoShow: false
+								}
+							});
+						}
+					}
+				});
+				//菜单
+				menuv = new Vue({
+					el: "#imenu",
+					data: {
+						myname: "登录",
+						logout: "注册"
+					},
+					methods: {
+						loginme: function() {
+							if(mv.logged) {
+								showuser(mv.user.id);
+							} else {
+								mui.openWindow({
+									id: 'login.html',
+									url: 'login.html',
+									show: {
+										aniShow: "slide-in-bottom"
+									},
+									extras: {
+										cfg: cfg
+									},
+									waiting: {
+										autoShow: false
+									}
+								});
+							}
+						},
+						logoutreg: function() {
+							if(mv.logged) {
+								plus.storage.removeItem("authkey");
+								plus.storage.removeItem("id");
+								loadpage();
+							} else {
+								mui.openWindow({
+									id: 'login.html',
+									url: 'login.html',
+									show: {
+										aniShow: "slide-in-bottom"
+									},
+									extras: {
+										cfg: cfg,
+										login: false
+									},
+									waiting: {
+										autoShow: false
+									}
+								});
+							}
+						}
+					}
+				});
+				mv = new Vue({
+					el: "#mainlist",
+					data: {
+						logged: false,
+						user: {
+							icon: "",
+							noicon: "/img/noicon.png",
+							id: 0
+						},
+						userupdated: false,
+						postlst: {},
+						users: {}
+					},
+					methods: {
+						chkmy: function(post) {
+							if(post.own == mv.user.id)
+								return true;
+							return false;
+						},
+						postnow: function() {
+							if(this.newpost.proc)
+								return;
+							let v = this;
+							v.newpost.failed = false;
+							if(!v.logged)
+								return;
+							if(trim(v.newpost.title) == "")
+								return v.newpost.tierr = true;
+							v.newpost.proc = true;
+							const params = new URLSearchParams();
+							params.append('title', v.newpost.title);
+							params.append('text', v.newpost.content);
+							axios.post(cfg.serverurl + '/post/create', params)
+								.then(function(res) {
+									if(res.data <= vars.PostStatus.success)
+										location.reload(false);
+									else v.newpost.failed = true;
+									v.newpost.proc = false;
+								})
+								.catch(function(res) {
+									v.newpost.failed = true;
+									v.newpost.proc = false;
+								});
+						}
+					}
+				});
+				updatelist();
+			}
+
+			function loadpage() {
+				location.reload();
+			}
+
+			function updatelist(r) {
+				var usrlst = [];
+				var authkey = plus.storage.getItem("authkey");
+				if(authkey) {
+					mv.logged = true;
+					mv.user.id = plus.storage.getItem("id");
+					usrlst.push(mv.user.id);
+				}
+				axios.get(cfg.serverurl + '/index/index/json')
+					.then(function(res) {
+						var i1 = res.data;
+						var o1 = {};
+						var fid;
+						for(let i in i1) {
+							fid = 'f' + i;
+							o1[fid] = i1[i];
+							o1[fid].pid = i1[i].id;
+							o1[fid].id = fid;
+							o1[fid].ti = i1[i].title;
+							if(usrlst.indexOf(i1[i].own) === -1)
+								usrlst.push(i1[i].own);
+							if(i1[i].lastrep != null && usrlst.indexOf(i1[i].lastrep) === -1)
+								usrlst.push(i1[i].lastrep);
+						}
+						updateuser(usrlst);
+						mv.postlst = Object.assign({}, o1);
+						if(typeof r == "function")
+							r();
+					})
+					.catch(function(res) {
+						mui.toast('未知错误');
+					});
+			}
+
+			function updatecfg(e) {
+				//cfg = e.detail.cfg;
+				//plus.storage.setItem("cfg", JSON.stringify(cfg));
+				loadpage();
+			}
+
+			function showwindow(id, ex) { //打开内部页面
+				mui.openWindow({
+					id: id,
+					show: {
+						aniShow: "slide-in-bottom"
+					},
+					waiting: {
+						autoShow: false
+					}
+				});
+				mui.fire(cfgpage, "setcfg", {
+					cfg: cfg,
+					ex: ex
+				});
+			}
+
+			function showpost(id) {
+				mui.openWindow({
+					id: 'post.html',
+					show: {
+						aniShow: "slide-in-right"
+					},
+					waiting: {
+						autoShow: false
+					}
+				});
+				mui.fire(postpage, "setcfg", {
+					cfg: cfg,
+					postid: id
+				});
+			}
+
+			function showuser(id) {
+				mui.openWindow({
+					id: 'user.html',
+					url: 'user.html',
+					show: {
+						aniShow: "slide-in-left"
+					},
+					extras: {
+						cfg: cfg,
+						userid: id
+					},
+					waiting: {
+						autoShow: false
+					}
+				});
+			}
+
+			function openlink(i) { //打开外部链接
+				console.log(i);
+				plus.runtime.openURL(i);
+			}
+
+			function log(v) {
+				console.log(JSON.stringify(v));
+			}
+		</script>
+	</head>
+
+	<body>
+		<!-- 主界面不动、菜单移动 -->
+		<!-- 侧滑导航根容器 -->
+		<div class="mui-off-canvas-wrap mui-draggable mui-slide-in">
+			<!-- 菜单容器 -->
+			<aside class="mui-off-canvas-left" id="offCanvasSide">
+				<div id="imenu">
+					<ul class="mui-table-view">
+						<li class="mui-table-view-cell" @tap="loginme">{{myname}}</li>
+						<li class="mui-table-view-cell" @tap="logoutreg">{{logout}}</li>
+					</ul>
+					<div id="ietc">
+						<!-- 菜单具体展示内容 -->
+						<div class="iset mui-table-view-cell" @tap="loadpage();">重新加载</div>
+						<div class="ihp mui-table-view-cell" @tap="openlink('https://kuriko.top/');">作者HP</div>
+					</div>
+				</div>
+			</aside>
+			<!-- 主页面容器 -->
+			<div class="mui-inner-wrap">
+				<!-- 主页面标题 -->
+				<header id="hwrap" class="mui-bar mui-bar-nav">
+					<a id="menuBtn" class="mui-icon mui-action-menu mui-icon-bars mui-pull-left" href="#offCanvasSide"></a>
+					<h1 class="mui-title">KurikoBBS</h1>
+					<a id="addBtn" class="mui-icon mui-icon-plusempty" @tap="newpost"></a>
+				</header>
+				<div id="contentScrollWrap" class="mui-content mui-scroll-wrapper">
+					<div class="mui-scroll">
+						<!-- 主界面具体展示内容 -->
+						<ul id="mainlist" class="mui-table-view">
+							<li v-if="userupdated" v-for="v in postlst" :id="v.id" class="post mui-table-view-cell" @tap="showpost(v.pid);" v-cloak>
+								<div v-if="chkmy(v)" class="my"></div>
+								<div class="title ellipsis">{{v.ti}}</div>
+								<div class="postusrinfo own">
+									<a class="usrid ellipsis">创建:{{users['u'+v.own].name}}</a>
+									<a class="time noev">时间:{{v.createtime}}</a>
+								</div>
+								<div v-if="v.lastrep!=null" class="postusrinfo lastrep">
+									<a class="usrid ellipsis">最新回复:{{users['u'+v.lastrep].name}}</a>
+									<a class="time noev">最终更新:{{v.updatetime}}</a>
+								</div>
+								<div v-else class="postusrinfo lastrep noev">
+									<a class="usrid norep">暂无回复</a>
+									<a class="time">最终更新:{{v.updatetime}}</a>
+								</div>
+							</li>
+						</ul>
+					</div>
+				</div>
+				<div class="mui-off-canvas-backdrop"></div>
+			</div>
+		</div>
+	</body>
+
+</html>

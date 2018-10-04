@@ -1,0 +1,314 @@
+<!doctype html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<link href="css/mui.min.css" rel="stylesheet" />
+		<link rel="stylesheet" href="css/common.css" />
+		<link rel="stylesheet" href="css/post.css" />
+		<script type="text/javascript" src="js/vue.js"></script>
+		<script src="js/mui.min.js" type="text/javascript" charset="utf-8"></script>
+		<script type="text/javascript" src="js/axios.js"></script>
+		<script type="text/javascript" src="js/vars.js"></script>
+		<script type="text/javascript" src="js/md5.js"></script>
+		<script type="text/javascript">
+			var self, mw;
+			var mv;
+			//var scroll;
+			var cfg, postid;
+			mui.init({
+				pullRefresh: {
+					container: "#mw", //下拉刷新容器标识，querySelector能定位的css选择器均可，比如：id、.class等
+					down: {
+						style: 'circle', //必选，下拉刷新样式，目前支持原生5+ ‘circle’ 样式
+						color: '#ff66ff', //可选，默认“#2BD009” 下拉刷新控件颜色
+						height: '50px', //可选,默认50px.下拉刷新控件的高度,
+						range: '50px', //可选 默认100px,控件可下拉拖拽的范围
+						offset: '50px', //可选 默认0px,下拉刷新控件的起始位置
+						auto: false, //可选,默认false.首次加载自动上拉刷新一次
+						callback: updatepostdata //必选，刷新函数，根据具体业务来编写，比如通过ajax从服务器获取新数据；
+					}
+				},
+				beforeback: function() {
+					if(mv.edited)
+						mui.fire(mw, "setcfg");
+					return true;
+				}
+			});
+			mui.plusReady(function() {
+				//scroll = mui("#mw").scroll(); //滚动条
+				self = plus.webview.currentWebview();
+				mw = plus.webview.currentWebview().opener();
+				cfg = self.cfg;
+				window.addEventListener("setcfg", updatecfg);
+				window.addEventListener("edited", updatecfg);
+				document.querySelector("body").addEventListener("swiperight", function(){
+					mui.back();
+				});
+				loginpage = plus.webview.getWebviewById('login.html');
+				vueload();
+			});
+
+			function updatepostdata() {
+				loadpost(postid);
+			}
+
+			function edited() {
+				mv.edited = true;
+				loadpost(postid);
+			}
+
+			function updatecfg(e) {
+				if(typeof e.detail.cfg != "undefined")
+					cfg = Object.assign({}, e.detail.cfg);
+				if(typeof e.detail.postid != "undefined")
+					postid = e.detail.postid;
+				loadpost(postid);
+			}
+
+			function vueload() {
+				mv = new Vue({
+					el: '#main',
+					data: {
+						master: {},
+						canedit: false,
+						child: [],
+						page: 0,
+						userupdated: false,
+						logged: false,
+						users: {},
+						user: {
+							id: 0,
+							permission: vars.Permission.read,
+							usrgroup: vars.UserGroup.guest
+						},
+						repcontent: "",
+						loaded: false
+					},
+					methods: {
+						postnow: function() {
+							let v = this;
+							if(v.proc) return;
+							if(!v.logged) {
+								loginv.login = true;
+								loginv.show = true;
+								return;
+							}
+							if(trim(v.repcontent) == "") return mui("请输入回复内容");
+							v.proc = true;
+							const params = new URLSearchParams();
+							params.append('postid', v.master.id);
+							params.append('text', v.repcontent);
+							axios.post(cfg.serverurl + '/post/rep', params)
+								.then(function(res) {
+									if(res.data <= vars.PostStatus.success) {
+										mui.toast("发表成功");
+										updatepostdata();
+									} else mui.toast("发表失败");
+									v.proc = false;
+								})
+								.catch(function(res) {
+									mui.toast("发表失败");
+									v.proc = false;
+								});
+						},
+						delchk: function(id) {
+							if(typeof id != "undefined") {
+								if(!mv.child[id].canedit)
+									return;
+								mui.confirm('确定删除？', '删除', ['取消', '确认'], function(e) {
+									if(e.index == 1) {
+										delpost(mv.child[id].id);
+									}
+								}, 'div');
+							} else {
+								if(!mv.canedit)
+									return;
+								mui.confirm('确定删除？', '删除', ['取消', '确认'], function(e) {
+									if(e.index == 1) {
+										delpost(mv.master.id, true);
+									}
+								}, 'div');
+							}
+						},
+						editpost: function(id) {
+							var d = this.master;
+							if(typeof id != "undefined") {
+								if(!mv.child[id].canedit)
+									return;
+								d = mv.child[id];
+							} else if(!mv.canedit)
+								return;
+							mui.openWindow({
+								id: "editpost.html",
+								url: "editpost.html",
+								show: {
+									aniShow: "slide-in-bottom"
+								},
+								extras: {
+									cfg: cfg,
+									postdata: d
+								},
+								waiting: {
+									autoShow: false
+								}
+							})
+						}
+					}
+				});
+			}
+
+			function loadpost(postid) {
+				axios.get(cfg.serverurl + "/post/" + postid + "/json")
+					.then(function(res) {
+						mv.page = res.data.page;
+						children = res.data.childdata;
+						for(let i in children) {
+							children[i].canedit = false;
+							children[i].delchk = false;
+							children[i].posstr = cutch(children[i].posstr);
+						}
+						mv.master = Object.assign({}, res.data.postdata);
+						mv.child = Object.assign([], children);
+						document.querySelector("#hw .mui-title").innerText = mv.master.title;
+						mv.loaded = true;
+						var usrlst = [];
+						var authkey = getCookie('authkey');
+						if(authkey != null) {
+							mv.logged = true;
+							mv.user.id = getCookie('id');
+							usrlst.push(mv.user.id);
+						}
+						if(usrlst.indexOf(mv.master.own) === -1)
+							usrlst.push(mv.master.own);
+						p = Object.keys(mv.child);
+						for(let i in p) {
+							if(usrlst.indexOf(mv.child[i].own === -1))
+								usrlst.push(mv.child[i].own);
+						}
+						updateuser(usrlst);
+						mv.master.posstr = cutch(mv.master.posstr);
+						setTimeout(updatepermission, 200);
+						//scroll.reLayout();
+						mui('#mw').pullRefresh().endPulldown();
+					});
+			}
+
+			function updateuser(usr) {
+				if(typeof usr != "object")
+					return;
+				const params = new URLSearchParams();
+				params.append('usrlst', JSON.stringify(usr));
+				axios.post(cfg.serverurl + '/user/users', params)
+					.then(function(res) {
+						users = res.data;
+						for(let i in users) {
+							users[i].uid = 'u' + users[i].id;
+							mv.users['u' + users[i].id] = Object.assign({}, users[i]);
+						}
+						mv.userupdated = true;
+					});
+			}
+
+			function updatepermission() {
+				if(!mv.userupdated)
+					return setTimeout(updatepermission, 200);
+				if(!mv.logged)
+					return;
+				mv.user.permission = mv.users['u' + mv.user.id].permission;
+				mv.user.usrgroup = mv.users['u' + mv.user.id].usrgroup;
+				if(mv.user.permission & vars.Permission.admin || mv.user.usrgroup == vars.UserGroup.admin) {
+					mv.canedit = true;
+					for(i in mv.child)
+						mv.child[i].canedit = true;
+				} else {
+					if(mv.user.id == mv.master.own)
+						mv.canedit = true;
+					for(i in mv.child) {
+						if(mv.user.id == mv.child[i].own)
+							mv.child[i].canedit = true;
+					}
+				}
+			}
+
+			function delpost(postid, delmaster = false) {
+				mv.proc = true;
+				const params = new URLSearchParams();
+				params.append('postid', postid);
+				axios.post(cfg.serverurl + '/post/del', params)
+					.then(function(res) {
+						if(res.data <= vars.PostStatus.success) {
+							mui.toast('操作成功');
+							mv.edited = true;
+							if(delmaster) {
+								mui.fire(mw, "setcfg");
+								self.close();
+							} else updatepostdata();
+						} else mui.toast('操作失败');
+						mv.proc = false;
+					})
+					.catch(function(res) {
+						mui.toast('操作失败');
+						mv.proc = false;
+					});
+			}
+
+			function reloadmain() {
+				mui.fire(mw, "setcfg", {
+					cfg: mv.cfg
+				});
+				return true;
+			}
+
+			function log(v) {
+				console.log(JSON.stringify(v));
+			}
+		</script>
+	</head>
+
+	<body>
+		<header id="hw" class="mui-bar mui-bar-nav">
+			<div class="mui-action-back mui-icon mui-icon-closeempty"></div>
+			<h1 class="mui-title ellipsis">帖子详细</h1>
+		</header>
+		<div id="mw" class="mui-content mui-scroll-wrapper">
+			<div class="mui-scroll">
+				<div id="main">
+					<div v-if="loaded" class="master" v-cloak>
+						<div class="title">{{master.title}}</div>
+						<div class="info">
+							<a class="postid">#1</a>
+							<a v-if="userupdated" class="own" :href="'/user/'+users['u'+master.own].usrid">{{users['u'+master.own].name}}</a>
+							<a class="pos">{{master.posstr}}</a><br />
+							<a class="create">{{master.createtime}}</a>
+							<a v-if="canedit" class="edit beforestr" str="编辑" @tap="editpost()"></a>
+							<a v-if="canedit" class="del beforestr" str="删除" @tap="delchk();"></a>
+						</div>
+						<div class="content">{{master.content}}</div>
+					</div>
+					<div v-if="loaded" v-for="(v,i) in child" :name="'#f'+v.id" class="child" v-cloak>
+						<div class="info">
+							<a class="postid" :href="'#f'+v.id">#{{i+2}}</a>
+							<a v-if="userupdated" class="own" :href="'/user/'+users['u'+v.own].usrid">{{users['u'+v.own].name}}</a>
+							<a class="pos">{{v.posstr}}</a><br />
+							<a class="create">{{v.createtime}}</a>
+							<a v-if="v.canedit" class="edit beforestr" str="编辑" @tap="editpost(i)"></a>
+							<a v-if="v.canedit" class="del beforestr" str="删除" @tap="delchk(i);"></a>
+						</div>
+						<div class="content">{{v.content}}</div>
+					</div>
+					<div class="rep">
+						<div class="content placeholder" placeholder="回复..." contenteditable="plaintext-only" v-text="repcontent" @keyup.ctrl.enter="repcontent=trim2($event.target.innerText);postnow();" @focus="txterr=false;" @blur="repcontent=trim2($event.target.innerText)"></div>
+						<div class="ok beforestr" str="发表" @click="postnow"></div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+
+</html>
+</body>
+
+</html>

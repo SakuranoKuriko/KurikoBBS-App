@@ -1,0 +1,177 @@
+<!doctype html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<link href="css/mui.min.css" rel="stylesheet" />
+		<link rel="stylesheet" href="css/common.css" />
+		<script type="text/javascript" src="js/vue.js"></script>
+		<script type="text/javascript" src="js/axios.js"></script>
+		<script type="text/javascript" src="js/vars.js"></script>
+		<script src="js/mui.min.js"></script>
+		<style>
+			html {
+				height: 100%;
+			}
+			
+			body {
+				height: calc(100% - 50px);
+				background: #fff;
+			}
+			
+			#hw {
+				height: 50px;
+				font-size: 30px;
+			}
+			
+			#hw .mui-icon-closeempty {
+				padding-top: 4px;
+				font-size: 40px;
+			}
+			
+			#hw h1 {
+				padding-top: 4px;
+				font-size: 24px;
+			}
+			
+			#main {
+				margin-top: 50px;
+				position: relative;
+				width: 100%;
+				padding: 10px 20px 0;
+				font-size: 16px;
+				margin-bottom: 10px;
+			}
+			.title,
+			.content {
+				width: 100%;
+				box-sizing: border-box;
+				margin: 0 auto;
+				font-size: inherit;
+				border: 1px solid #aaa;
+			}
+			
+			.title:hover,
+			.content:hover,
+			.title:focus,
+			.content:focus {
+				background-color: #cff;
+			}
+			
+			.title {
+				height: 40px;
+				padding: 0 16px;
+				margin-bottom: 10px;
+			}
+			
+			.content {
+				width: 100%;
+				box-sizing: border-box;
+				margin: 0 auto;
+				font-size: inherit;
+				border: 1px solid #aaa;
+				min-height: 97px;
+				max-height: 265px;
+				padding: 16px;
+				overflow: auto;
+				word-break: break-all;
+				outline: none;
+				user-select: text;
+				white-space: pre-wrap;
+				text-align: left;
+				-webkit-user-modify: read-write-plaintext-only;
+			}
+			
+			.btn {
+				font-size: 24px;
+				text-align: center;
+				width: 45%;
+				height: 50px;
+				line-height: 50px;
+				box-shadow: 1px 1px 1px #aaa;
+				margin: 10px;
+				display: inline-block;
+			}
+			
+			.btn:hover {
+				background-color: #dfd;
+			}
+			
+			.btn:active {
+				background-color: #bfb;
+			}
+		</style>
+		<script type="text/javascript">
+			var self, mw, cfg;
+			var mv;
+			mui.init()
+			mui.plusReady(function() {
+				self = plus.webview.currentWebview();
+				mw = plus.webview.currentWebview().opener();
+				cfg = self.cfg;
+				document.querySelector("body").addEventListener("swipedown", function() {
+					mui.back();
+				});
+				vueload();
+			});
+
+			function vueload() {
+				mv = new Vue({
+					el: "#main",
+					data: {
+						title: "",
+						content: ""
+					},
+					methods: {
+						postnow: function() {
+							let v = this;
+							if(v.proc)
+								return;
+							v.title=trim2(document.querySelector("#main .title").value);
+							v.content=trim2(document.querySelector("#main .content").innerText);
+							if(trim(v.title) == "")
+								return mui.toast("请输入标题");
+							v.proc = true;
+							const params = new URLSearchParams();
+							params.append('title', v.title);
+							params.append('text', v.content);
+							axios.post(cfg.serverurl+'/post/create', params)
+								.then(function(res) {
+									if(res.data <= vars.PostStatus.success){
+										mui.fire(mw, "setcfg");
+										mui.toast("发表成功");
+										v.title = "";
+										v.content = "";
+										mui.back();
+									}
+									else mui.toast("发表失败");
+									v.proc = false;
+								})
+								.catch(function(res) {
+									mui.toast("发表失败");
+									v.proc = false;
+								});
+						}
+					}
+				});
+			}
+		</script>
+	</head>
+
+	<body>
+		<header id="hw" class="mui-bar mui-bar-nav">
+			<div class="mui-action-back mui-icon mui-icon-closeempty"></div>
+			<h1 class="mui-title ellipsis">发新帖</h1>
+		</header>
+		<div id="main" class="show">
+			<div class="inputwrap">
+				<input class="title" type="text" placeholder="标题" maxlength="200" v-model="title" @blur="title=trim2(title)" />
+				<div class="content placeholder" placeholder="正文(可选)" contenteditable="plaintext-only" v-text="content" @blur="content=trim2($event.target.innerText)"></div>
+				<div class="btn beforestr" str="发表" @tap="postnow"></div>
+			</div>
+		</div>
+	</body>
+
+</html>

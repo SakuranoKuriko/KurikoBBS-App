@@ -1,0 +1,179 @@
+html {
+	height: 100%;
+}
+
+body {
+	height: calc(100% - 50px);
+}
+
+#hw {
+	height: 50px;
+	font-size: 30px;
+}
+
+#hw .mui-icon-closeempty {
+	padding-top: 4px;
+	font-size: 40px;
+}
+
+#hw h1 {
+	padding-top: 4px;
+	font-size: 24px;
+}
+
+#mw.mui-content {
+	padding-top: 50px;
+}
+
+#main {
+	background-color: #fff;
+}
+
+.master {
+	padding: 20px;
+}
+
+.child {
+	padding: 0 20px;
+	margin-bottom: 5px;
+}
+
+.title {
+	padding: 0 5px;
+	height: 40px;
+	line-height: 40px;
+	font-size: 24px;
+	border-bottom: 1px dashed #ccc;
+}
+
+.info a {
+	padding: 0 5px;
+	color: #666;
+}
+
+.info .own {
+	display: inline-block;
+	min-width: 100px;
+}
+
+.content {
+	padding: 5px;
+	border-bottom: 1px solid #aaa;
+}
+
+.delchk {
+	position: relative;
+	margin-left: 5px;
+	display: inline-block;
+	background: #444;
+	color: #f96;
+	opacity: 0;
+	visibility: hidden;
+	width: 100px;
+	border-radius: 10px;
+	height: 24px;
+	text-align: center;
+	font-size: 15px;
+	line-height: 24px;
+	cursor: default;
+	transition: all .5s;
+	-webkit-transition: all .5s;
+	transform: translateX(30px);
+	-webkit-transform: translateX(30px);
+}
+
+.delchk.show {
+	opacity: 1;
+	visibility: visible;
+	transform: translateX(0);
+	-webkit-transform: translateX(0);
+}
+
+.delchk:after {
+	content: "";
+	position: absolute;
+	height: 0;
+	width: 0;
+	top: 2px;
+	border-width: 10px;
+	border-style: solid;
+	border-color: transparent #444 transparent transparent;
+	left: -15px;
+}
+
+.delchk div {
+	display: inline-block;
+	padding: 0 4px;
+	cursor: pointer;
+}
+
+.delchk div:hover {
+	box-shadow: 0 0 2px 2px #fff;
+}
+
+.delchk div:active {
+	box-shadow: 0 0 2px 1px #fff inset;
+}
+
+.rep {
+	position: relative;
+	width: 100%;
+	width: calc(100% - 40px);
+	margin: 10px auto;
+	font-size: 16px;
+}
+
+.rep .txterr {
+	height: 28px;
+	width: 120px;
+	top: -50px;
+}
+
+.rep .txterr.show {
+	top: -28px;
+}
+
+.rep .content {
+	width: 100%;
+	box-sizing: border-box;
+	margin: 0 auto;
+	font-size: inherit;
+	border: 1px solid #aaa;
+}
+
+.rep .content:hover,
+.rep .content:focus {
+	background-color: #cff;
+}
+
+.rep .content {
+	min-height: 97px;
+	max-height: 265px;
+	padding: 16px;
+	overflow: auto;
+	word-break: break-all;
+	outline: none;
+	user-select: text;
+	white-space: pre-wrap;
+	text-align: left;
+	-webkit-user-modify: read-write-plaintext-only;
+}
+
+.rep .ok {
+	font-size: 24px;
+	text-align: center;
+	width: 45%;
+	height: 50px;
+	line-height: 50px;
+	box-shadow: 1px 1px 1px #aaa;
+	margin: 10px;
+	display: inline-block;
+}
+
+.rep .ok:hover {
+	background-color: #dfd;
+}
+
+.rep .ok:active {
+	background-color: #bfb;
+}

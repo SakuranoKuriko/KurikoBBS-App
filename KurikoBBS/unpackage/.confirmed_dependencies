@@ -1,0 +1,26 @@
+{
+	"index.html": {
+		"resources": [
+			"/css/common.css",
+			"/js/mui.min.js",
+			"/js/md5.js",
+			"/js/vue.js",
+			"/js/axios.js",
+			"/js/vars.js",
+			"index_postlist.html"
+		],
+		"refer": [
+			"config.html",
+			"post.html",
+			"login.html",
+			"index_postlist.html",
+			"user.html",
+			"newpost.html"
+		]
+	},
+	"post.html": {
+		"refer": [
+			"editpost.html"
+		]
+	}
+}

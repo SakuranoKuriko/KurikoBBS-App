@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<link href="css/mui.min.css" rel="stylesheet" />
+		<link rel="stylesheet" href="css/common.css" />
+		<link rel="stylesheet" href="css/config.css" />
+		<script type="text/javascript" src="js/mui.min.js"></script>
+		<script type="text/javascript" src="js/vue.js"></script>
+		<script type="text/javascript">
+			mui.init({
+				beforeback: function() {
+					return updatecfg();
+				}
+			});
+			var self, mw;
+			var cmv;
+			var cmscroll;
+			mui.plusReady(function() {
+				cmscroll = mui("#mw").scroll(); //滚动条
+				self = plus.webview.currentWebview();
+				mw = plus.webview.currentWebview().opener();
+				vueload();
+				window.addEventListener("setcfg", cmv.updatecfg);
+			});
+
+			function vueload() {
+				cmv = new Vue({
+					el: "#cfgmain",
+					data: {
+						cfg: self.cfg
+					},
+					methods: {
+						updatecfg: function(e) {
+							this.cfg = Object.assign({}, e.detail.cfg);
+						}
+					}
+				});
+			}
+
+			function updatecfg() {
+				mui.fire(mw, "setcfg", {
+					cfg: cmv.cfg
+				});
+				return true;
+			}
+
+			function switchme(id) {
+				cmv.cfg[id] = !(cmv.cfg[id]);
+			}
+
+			//TODO 添加输入提示
+			function inputme(id, parentid) {
+				if(typeof parentid == "undefined") {
+					mui.prompt('', cmv.cfg[id], '输入...', ['取消', '确认'], function(e) {
+						if(e.index && e.value != "")
+							cmv.cfg[id] = e.value;
+					}, 'div');
+				} else {
+					mui.prompt('', cmv.cfg[parentid][id], '输入...', ['取消', '确认'], function(e) {
+						if(e.index && e.value != "")
+							cmv.cfg[parentid][id] = e.value;
+					}, 'div');
+				}
+			}
+		</script>
+	</head>
+
+	<body>
+		<header id="hw" class="mui-bar mui-bar-nav">
+			<div class="mui-action-back mui-icon mui-icon-closeempty"></div>
+			<h1 class="mui-title">设置</h1>
+		</header>
+		<div id="mw" class="mui-content mui-scroll-wrapper">
+			<div class="mui-scroll">
+				<ul id="cfgmain" class="mui-table-view">
+				</ul>
+			</div>
+		</div>
+	</body>
+
+</html>

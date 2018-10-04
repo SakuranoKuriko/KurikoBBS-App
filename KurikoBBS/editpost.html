@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<link href="css/mui.min.css" rel="stylesheet" />
+		<link rel="stylesheet" href="css/common.css" />
+		<script type="text/javascript" src="js/vue.js"></script>
+		<script type="text/javascript" src="js/axios.js"></script>
+		<script type="text/javascript" src="js/vars.js"></script>
+		<script src="js/mui.min.js"></script>
+		<style>
+			html{
+				height: 100%;
+			}
+			body{
+				height: calc(100% - 50px);
+			}
+			#hw {
+				height: 50px;
+				font-size: 30px;
+			}
+			
+			#hw .mui-icon-closeempty {
+				padding-top: 4px;
+				font-size: 40px;
+			}
+			
+			#hw h1 {
+				padding-top: 4px;
+				font-size: 24px;
+			}
+			
+			#main {
+				margin-top: 50px;
+				position: relative;
+				width: 100%;
+				padding: 10px 20px 0;
+				font-size: 16px;
+				margin-bottom: 10px;
+				background: #fff;
+			}
+			
+			.title,
+			.content {
+				width: 100%;
+				box-sizing: border-box;
+				margin: 0 auto;
+				font-size: inherit;
+				border: 1px solid #aaa;
+			}
+			
+			.title:hover,
+			.content:hover,
+			.title:focus,
+			.content:focus {
+				background-color: #cff;
+			}
+			
+			.title {
+				height: 40px;
+				padding: 0 16px;
+				margin-bottom: 10px;
+			}
+			
+			.content {
+				width: 100%;
+				box-sizing: border-box;
+				margin: 0 auto;
+				font-size: inherit;
+				border: 1px solid #aaa;
+				min-height: 97px;
+				max-height: 265px;
+				padding: 16px;
+				overflow: auto;
+				word-break: break-all;
+				outline: none;
+				user-select: text;
+				white-space: pre-wrap;
+				text-align: left;
+				-webkit-user-modify: read-write-plaintext-only;
+			}
+			
+			.btn {
+				font-size: 24px;
+				text-align: center;
+				width: 45%;
+				height: 50px;
+				line-height: 50px;
+				box-shadow: 1px 1px 1px #aaa;
+				margin: 10px;
+				display: inline-block;
+			}
+			
+			.btn:hover {
+				background-color: #dfd;
+			}
+			
+			.btn:active {
+				background-color: #bfb;
+			}
+		</style>
+		<script type="text/javascript">
+			var mv, hv, self, mw;
+			var cfg, postdata;
+			mui.init();
+			mui.plusReady(function() {
+				self = plus.webview.currentWebview();
+				mw = plus.webview.currentWebview().opener();
+				postdata = self.postdata;
+				cfg = self.cfg;
+				document.querySelector("body").addEventListener("swipedown", function(){
+					self.close();
+				});
+				vueload();
+			});
+
+			function vueload() {
+				mv = new Vue({
+					el: "#main",
+					data: {
+						id: postdata.id,
+						ismaster: postdata.masterid == null,
+						data: JSON.parse(JSON.stringify(postdata)),
+						ndata: JSON.parse(JSON.stringify(postdata))
+					},
+					methods: {
+						postnow: function() {
+							let v = this;
+							if(v.proc)
+								return;
+							if(trim(v.ndata.title) == "" && ismaster)
+								return mui.toast("请输入标题");
+							v.ndata.content=trim2(document.querySelector("#main .content").innerText);
+							if(v.ndata.title == v.data.title && v.ndata.content == v.data.content) {
+								mui.toast("未修改");
+								self.close();
+								return;
+							}
+							v.proc = true;
+							const params = new URLSearchParams();
+							params.append('postid', v.ndata.id);
+							if(v.ismaster)
+								params.append('title', v.ndata.title);
+							params.append('text', v.ndata.content);
+							axios.post(cfg.serverurl+'/post/editit', params)
+								.then(function(res) {
+									if(res.data <= vars.PostStatus.success){
+										mui.fire(mw, "edited");
+										mui.toast("修改成功");
+										self.close();
+									}
+									else mui.toast("修改失败");
+									v.proc = false;
+								})
+								.catch(function(res) {
+									mui.toast("修改失败");
+									v.proc = false;
+								});
+						}
+					}
+				});
+			}
+		</script>
+	</head>
+
+	<body>
+		<header id="hw" class="mui-bar mui-bar-nav">
+			<div class="mui-action-back mui-icon mui-icon-closeempty"></div>
+			<h1 class="mui-title ellipsis">编辑帖子</h1>
+		</header>
+		<div id="main">
+			<input v-if="ismaster" class="title" placeholder="标题" type="text" maxlength="200" v-model="ndata.title" />
+			<div class="content placeholder" placeholder="(可选)" contenteditable="plaintext-only" v-text="ndata.content"></div>
+			<div class="btn beforestr" str="发表" @tap="postnow"></div>
+		</div>
+	</body>
+
+</html>
