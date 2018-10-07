@@ -129,6 +129,7 @@
 							if(v.pw == "") return mui.toast("请输入密码");
 							if(v.cpw == "") return mui.toast("请再次输入密码");
 							if(v.pw != v.cpw) return mui.toast("两次输入密码不一致");
+							if(!vars.Regexp.usrid.test(v.id)) return mui.toast("用户名不正确(以字母开头，不小于2位，仅包含字母/数字/下划线)");
 							if(!vars.Regexp.email.test(v.email)&&v.email!="") return mui.toast("邮箱格式错误");
 							if(v.name == "") v.name = v.id;
 							v.proc = true;

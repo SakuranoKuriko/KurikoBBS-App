@@ -133,6 +133,7 @@
 						},
 						logoutreg: function() {
 							if(mv.logged) {
+								plus.navigator.removeAllCookie();
 								plus.storage.removeItem("authkey");
 								plus.storage.removeItem("id");
 								loadpage();

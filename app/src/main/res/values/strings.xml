@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">KurikoBBS</string>
     <string name="appid">top.kuriko.bbs</string>
-    <string name="versionCode">100</string>
-    <string name="version">1.0.0</string>
+    <string name="versionCode">102</string>
+    <string name="version">1.0.2</string>
 </resources>
