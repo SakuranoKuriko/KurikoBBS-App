@@ -70,6 +70,7 @@
 				if(typeof self.login != "undefined" && (self.login == "false" || self.login == false))
 					login = false;
 				vueload();
+				mv.tglogin(login);
 			});
 
 			function vueload() {
@@ -127,7 +128,8 @@
 							if(v.id == "") return mui.toast("请输入账号");
 							if(v.pw == "") return mui.toast("请输入密码");
 							if(v.cpw == "") return mui.toast("请再次输入密码");
-							if(!vars.Regexp.email.test(v.email)) return mui.toast("邮箱格式错误");
+							if(v.pw != v.cpw) return mui.toast("两次输入密码不一致");
+							if(!vars.Regexp.email.test(v.email)&&v.email!="") return mui.toast("邮箱格式错误");
 							if(v.name == "") v.name = v.id;
 							v.proc = true;
 							const params = new URLSearchParams();
@@ -190,15 +192,15 @@
 				</div>
 				<div class="mui-input-row">
 					<label>确认密码</label>
-					<input type="password" class="cpw mui-input-clear mui-input" disabled="disabled" placeholder="再次输入密码" v-model="pw">
+					<input type="password" class="cpw mui-input-clear mui-input" disabled="disabled" placeholder="再次输入密码" v-model="cpw">
 				</div>
 				<div class="mui-input-row">
 					<label>昵称</label>
-					<input type="text" class="name mui-input-clear mui-input" :placeholder="id==''?'显示名称':id" v-model="pw">
+					<input type="text" class="name mui-input-clear mui-input" :placeholder="id==''?'显示名称':id" v-model="name">
 				</div>
 				<div class="mui-input-row">
 					<label>邮箱</label>
-					<input type="text" class="email mui-input-clear mui-input" placeholder="邮箱(可选)" v-model="pw">
+					<input type="text" class="email mui-input-clear mui-input" placeholder="邮箱(可选)" v-model="email">
 				</div>
 				<button class="login mui-btn mui-btn-block mui-btn-primary" @tap="tglogin(true);">登录</button>
 				<button class="reg mui-btn mui-btn-block mui-btn-primary" @tap="ireg">注册</button>
